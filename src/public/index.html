@@ -1,0 +1,394 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="theme-color" content="#111014">
+    <title>Oficina de Webhook · Cobrança demonstrativa</title>
+    <style>
+        :root {
+            color-scheme: dark;
+            --background: #111014;
+            --surface: #1a191f;
+            --surface-soft: #211f27;
+            --border: #302d38;
+            --text: #f5f3f8;
+            --muted: #a49eae;
+            --purple: #a879ff;
+            --purple-strong: #8b5cf6;
+            --green: #72d6a0;
+            --red: #ff828b;
+        }
+
+        * { box-sizing: border-box; }
+
+        body {
+            min-height: 100vh;
+            margin: 0;
+            padding: 48px 20px;
+            display: grid;
+            place-items: center;
+            background: radial-gradient(ellipse at 50% 0%, #292038 0, var(--background) 48rem);
+            color: var(--text);
+            font-family: Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+        }
+
+        main { width: min(100%, 760px); }
+
+        .sr-only { position: absolute; width: 1px; height: 1px; padding: 0; margin: -1px; overflow: hidden; clip: rect(0, 0, 0, 0); white-space: nowrap; border: 0; }
+
+        .brand { margin: 0 0 20px 4px; }
+
+        .brand-mark {
+            display: inline-flex;
+            align-items: center;
+            gap: 9px;
+            color: #d2c5e8;
+            font-size: 12px;
+            font-weight: 750;
+            letter-spacing: .14em;
+        }
+
+        .brand-mark::before {
+            content: "";
+            width: 9px;
+            height: 9px;
+            border-radius: 3px;
+            background: var(--purple);
+            box-shadow: 0 0 16px #a879ff88;
+            transform: rotate(45deg);
+        }
+
+        .card {
+            padding: clamp(24px, 6vw, 36px);
+            border: 1px solid #ffffff12;
+            border-radius: 22px;
+            background: linear-gradient(145deg, #201e25, var(--surface) 54%);
+            box-shadow: 0 24px 80px #00000055, inset 0 1px #ffffff08;
+        }
+
+        .eyebrow {
+            color: var(--purple);
+            font-size: 11px;
+            font-weight: 750;
+            letter-spacing: .13em;
+            text-transform: uppercase;
+        }
+
+        h1 { margin: 12px 0 8px; font-size: clamp(27px, 7vw, 34px); letter-spacing: -.045em; }
+        .intro { margin: 0 0 28px; color: var(--muted); font-size: 14px; }
+
+        form { display: grid; gap: 10px; }
+
+        label { margin-top: 5px; color: #d6d1dd; font-size: 13px; font-weight: 600; }
+
+        input {
+            width: 100%;
+            min-height: 48px;
+            padding: 0 14px;
+            border: 1px solid var(--border);
+            border-radius: 11px;
+            outline: none;
+            background: #131217;
+            color: var(--text);
+            font: inherit;
+            transition: border-color .18s, box-shadow .18s;
+        }
+
+        input::placeholder { color: #77717e; }
+        input:focus { border-color: var(--purple); box-shadow: 0 0 0 3px #a879ff25; }
+
+        button {
+            width: 100%;
+            min-height: 48px;
+            margin-top: 10px;
+            border: 0;
+            border-radius: 11px;
+            background: linear-gradient(135deg, #a879ff, #8654e8);
+            color: #170f24;
+            cursor: pointer;
+            font: inherit;
+            font-size: 14px;
+            font-weight: 750;
+            transition: filter .18s, transform .18s, opacity .18s;
+        }
+
+        button:hover:not(:disabled) { filter: brightness(1.1); transform: translateY(-1px); }
+        button:focus-visible { outline: 3px solid #d3baff; outline-offset: 3px; }
+        button:disabled { cursor: not-allowed; opacity: .55; }
+
+        .error { min-height: 20px; margin: 12px 0 0; color: var(--red); font-size: 13px; }
+
+        #result {
+            display: none;
+            margin-top: 8px;
+            padding: 22px;
+            border: 1px solid var(--border);
+            border-radius: 16px;
+            background: #141318;
+            text-align: center;
+            animation: appear .25s ease-out;
+        }
+
+        @keyframes appear { from { opacity: 0; transform: translateY(8px); } to { opacity: 1; transform: translateY(0); } }
+        .amount { margin: 8px 0 16px; font-size: 28px; font-weight: 750; letter-spacing: -.04em; }
+
+        .qr {
+            width: 160px;
+            height: 160px;
+            margin: 0 auto;
+            display: grid;
+            place-items: center;
+            overflow: hidden;
+            border: 6px solid white;
+            border-radius: 12px;
+            background: white;
+        }
+
+        .qr img { width: 100%; height: 100%; object-fit: contain; }
+        .qr-capition { margin: 9px 0 16px; color: var(--muted); font-size: 11px; }
+
+        .status {
+            display: inline-flex;
+            padding: 7px 12px;
+            border: 1px solid #a879ff35;
+            border-radius: 999px;
+            background: #a879ff12;
+            color: #c8aaff;
+            font-size: 12px;
+            font-weight: 700;
+        }
+
+        .status[data-status="approved"] { border-color: #72d6a045; background: #72d6a014; color: var(--green); }
+        .status[data-status="rejected"], .status[data-status="cancelled"] { border-color: #ff828b45; background: #ff828b12; color: var(--red); }
+
+        .subtle { margin: 13px 0 0; overflow-wrap: anywhere; color: #817b89; font-size: 10px; }
+        #simulate-button { margin-top: 18px; }
+
+        .payments-card { margin-top: 18px; }
+        .payments-heading { display: flex; align-items: center; justify-content: space-between; gap: 16px; }
+        .payments-heading h2 { margin: 0; font-size: 19px; letter-spacing: -.025em; }
+        .payments-heading p { margin: 6px 0 0; color: var(--muted); font-size: 12px; }
+        .payments-actions { display: flex; align-items: center; gap: 8px; }
+        select {
+            min-height: 40px;
+            padding: 0 30px 0 11px;
+            border: 1px solid var(--border);
+            border-radius: 10px;
+            outline: none;
+            background: #131217;
+            color: var(--text);
+            font: inherit;
+            font-size: 12px;
+        }
+        select:focus { border-color: var(--purple); }
+        .refresh-button {
+            width: 40px;
+            min-height: 40px;
+            margin: 0;
+            display: grid;
+            place-items: center;
+            border: 1px solid var(--border);
+            background: var(--surface-soft);
+            color: var(--text);
+            font-size: 18px;
+        }
+        .payment-list { display: grid; gap: 9px; margin-top: 20px; }
+        .payment-row {
+            display: grid;
+            grid-template-columns: minmax(0, 1fr) auto auto;
+            align-items: center;
+            gap: 16px;
+            padding: 13px 14px;
+            border: 1px solid var(--border);
+            border-radius: 12px;
+            background: #141318;
+        }
+        .payment-customer { overflow: hidden; color: var(--text); font-size: 13px; font-weight: 650; text-overflow: ellipsis; white-space: nowrap; }
+        .payment-meta { margin-top: 5px; overflow-wrap: anywhere; color: #817b89; font-size: 10px; }
+        .payment-value { white-space: nowrap; font-size: 13px; font-weight: 700; }
+        .payment-status { white-space: nowrap; font-size: 11px; font-weight: 700; color: #c8aaff; }
+        .payment-status[data-status="approved"] { color: var(--green); }
+        .payment-status[data-status="rejected"], .payment-status[data-status="cancelled"] { color: var(--red); }
+        .list-message { margin: 16px 0 0; color: var(--muted); font-size: 13px; text-align: center; }
+
+        @media (max-width: 480px) {
+            body { padding: 26px 14px; }
+            .card { border-radius: 18px; }
+            .payments-heading { align-items: flex-start; flex-direction: column; }
+            .payments-actions { width: 100%; }
+            .payments-actions select { flex: 1; }
+            .payment-row { grid-template-columns: minmax(0, 1fr) auto; gap: 8px; }
+            .payment-status { grid-column: 1 / -1; }
+        }
+    </style>
+</head>
+<body>
+    <main>
+        <div class="brand">
+            <span class="brand-mark">OFICINA DE WEBHOOK</span>
+        </div>
+        <section class="card">
+            <h1>Receber por PIX</h1>
+            <p class="intro">Crie uma cobrança e acompanhe</p>
+            <form action="" id="payment-form">
+                <label for="cliente">Nome do cliente</label>
+                <input type="text" name="cliente" autocomplete="name" placeholder="Ex: Ana Silva" id="cliente" required maxlength="255"/>
+                <label for="valor">Valor em reais</label>
+                <input type="number" name="valor" id="valor" min="0.01" max="99999999.99" step="0.01" placeholder="50,00" required>
+                <button id="create-button" type="submit">Gerar cobrança</button>
+            </form>
+            <p id="error" class="error" role="alert"></p>
+            <div id="result" aria-live="polite">
+                <div class="eyebrow">cobrança criada</div>
+                <div id="amount" class="amount"></div> 
+                <div class="qr">
+                    <img alt="QR demostrativo, não pagável" id="qr-image">
+                </div>   
+                <p class="qr-capition">QR Code ilustrativo · não pagável</p>
+                <div id="status" class="status" data-status="pending">aguardando pagamento</div>
+                <p id="payment-id" class="subtle"></p>
+                <button id="simulate-button" type="button">Simular recebimento</button>  
+            </div>
+        </section>
+        <section class="card payments-card" aria-labelledby="payments-title">
+            <div class="payments-heading">
+                <div>
+                    <h2 id="payments-title">Pagamentos registrados</h2>
+                    <p>Consulte as cobranças salvas no banco de dados.</p>
+                </div>
+                <div class="payments-actions">
+                    <label for="status-filter" class="sr-only">Filtrar por status</label>
+                    <select id="status-filter" aria-label="Filtrar pagamentos por status">
+                        <option value="">Todos os status</option>
+                        <option value="pending">Aguardando</option>
+                        <option value="approved">Aprovados</option>
+                        <option value="rejected">Rejeitados</option>
+                        <option value="cancelled">Cancelados</option>
+                    </select>
+                    <button id="refresh-payments" class="refresh-button" type="button" aria-label="Atualizar lista" title="Atualizar lista">↻</button>
+                </div>
+            </div>
+            <div id="payment-list" class="payment-list" aria-live="polite"></div>
+            <p id="list-message" class="list-message" role="status">Carregando pagamentos...</p>
+        </section>
+    </main>
+    <script>
+
+        const form = document.querySelector("#payment-form");
+        const createButton = document.querySelector("#create-button");
+        const simulateButton = document.querySelector("#simulate-button");
+        const result = document.querySelector("#result");
+        const error = document.querySelector("#error");
+        const statusLabel = document.querySelector("#status");
+        const paymentList = document.querySelector("#payment-list");
+        const listMessage = document.querySelector("#list-message");
+        const statusFilter = document.querySelector("#status-filter");
+        const refreshPayments = document.querySelector("#refresh-payments");
+
+        let payment = null;
+        const labels = { pending: "Aguardando pagamento", approved: "Aprovado", rejected: "Rejeitado", cancelled: "Cancelado" };
+
+        function showError(message) { error.textContent = message }
+        function renderPayment(item) {
+            payment = item;
+            result.style.display = "block";
+            document.querySelector("#amount").textContent = new Intl.NumberFormat("pt-BR", { style: "currency", currency: "BRL" }).format(item.valor);
+            document.querySelector("#payment-id").textContent = `Identificador: ${item.id}`;
+            statusLabel.textContent = labels[item.status] || item.status;
+            statusLabel.dataset.status = item.status;
+            simulateButton.disabled = item.status !== "pending";
+        }
+
+        async function loadPayments() {
+            listMessage.textContent = "Carregando pagamentos...";
+            paymentList.replaceChildren();
+            refreshPayments.disabled = true;
+            try {
+                const query = statusFilter.value ? `?status=${encodeURIComponent(statusFilter.value)}` : "";
+                const response = await fetch(`/pagamentos${query}`);
+                const data = await response.json();
+                if (!response.ok) throw new Error(data.erro || "Não foi possível carregar os pagamentos.");
+                if (!data.pagamentos.length) {
+                    listMessage.textContent = "Nenhum pagamento encontrado.";
+                    return;
+                }
+                listMessage.textContent = "";
+                for (const item of data.pagamentos) {
+                    const row = document.createElement("article");
+                    row.className = "payment-row";
+                    const details = document.createElement("div");
+                    const customer = document.createElement("div");
+                    customer.className = "payment-customer";
+                    customer.textContent = item.cliente;
+                    const id = document.createElement("div");
+                    id.className = "payment-meta";
+                    id.textContent = `ID: ${item.id}`;
+                    details.append(customer, id);
+                    const amount = document.createElement("div");
+                    amount.className = "payment-value";
+                    amount.textContent = new Intl.NumberFormat("pt-BR", { style: "currency", currency: "BRL" }).format(item.valor);
+                    const status = document.createElement("div");
+                    status.className = "payment-status";
+                    status.dataset.status = item.status;
+                    status.textContent = labels[item.status] || item.status;
+                    row.append(details, amount, status);
+                    paymentList.append(row);
+                }
+            } catch (err) {
+                listMessage.textContent = err.message || "Não foi possível carregar os pagamentos.";
+            } finally {
+                refreshPayments.disabled = false;
+            }
+        }
+
+        statusFilter.addEventListener("change", loadPayments);
+        refreshPayments.addEventListener("click", loadPayments);
+        loadPayments();
+
+        form.addEventListener("submit", async (event) => {
+            event.preventDefault();
+            showError("");
+            createButton.disabled = true;
+            createButton.textContent = "Criando cobrança";
+            try {
+                const response = await fetch('/pagamentos', {
+                    method: "POST",
+                    headers: {"Content-Type": "application/json"},
+                    body: JSON.stringify({
+                        cliente: form.cliente.value.trim(),
+                        valor: Number(form.valor.value)
+                    })
+                })
+                const data = await response.json();
+                if (!response.ok) throw new Error(data.erro || "Não foi possível criar a cobrança.");
+                renderPayment(data.pagamento);
+                document.querySelector("#qr-image").src = `https://api.qrserver.com/v1/create-qr-code/?size=168x168&data=${encodeURIComponent('DEMO-PIX-' + data.pagamento.id)}`;
+                await loadPayments();
+            } catch (err) {
+                showError(err.message || "Falha de comunicação com o servidor.");
+            } finally {
+                createButton.disabled = false;
+                createButton.textContent = "Gerar cobrança";
+            }
+        });
+
+        simulateButton.addEventListener("click", async () => {
+            if (!payment) return;
+            showError("");
+            simulateButton.disabled = true;
+            try {
+                const response = await fetch(`/simulacao/pagamentos/${encodeURIComponent(payment.id)}/aprovar`, { method: "POST" });
+                const data = await response.json();
+                if (!response.ok) throw new Error(data.erro || "Não foi possível atualizar o pagamento.");
+                renderPayment(data.pagamento);
+                await loadPayments();
+            } catch (err) {
+                showError(err.message || "Falha de comunicação com o servidor.");
+                simulateButton.disabled = false;
+            }
+        });
+
+    </script>
+</body>
+</html>
